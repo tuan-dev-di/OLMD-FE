@@ -1,10 +1,16 @@
 import { LinearProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import ScrollToTop from "@/components/scroll-to-top/ScrollToTop";
-import { useAuth } from "@/hooks";
+import { useAuth, useCurrentPath } from "@/hooks";
+import {
+  ADMIN_PATH,
+  ADMIN_ROUTES,
+  MANAGER_PATH,
+  MANAGER_ROUTES,
+} from "@/routes/routes";
 
 import Header from "./header";
 import Nav from "./nav";
@@ -33,15 +39,35 @@ const Main = styled("div")(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function DashboardLayout() {
+export default function DashboardLayout(): JSX.Element {
   const [open, setOpen] = useState(false);
+
   const navigate = useNavigate();
+  const location = useLocation();
   const { state } = useAuth();
 
+  const currentPath = useCurrentPath(
+    state.role === "ADMIN" ? ADMIN_ROUTES : MANAGER_ROUTES,
+    location
+  );
+
   useEffect(() => {
-    if (!state.isAuthenticated) return navigate("/login", { replace: true });
-    return navigate("/dashboard/manager", { replace: true });
-  }, [state.isAuthenticated]);
+    if (!currentPath) return;
+    const isValidPath =
+      state.role === "ADMIN"
+        ? ADMIN_PATH.includes(currentPath)
+        : MANAGER_PATH.includes(currentPath);
+
+    if (!state.isAuthenticated && !state.role) {
+      return navigate("/login", { replace: true });
+    }
+    if (isValidPath) {
+      return navigate(location.pathname, { replace: true });
+    }
+    return navigate(state.role === "ADMIN" ? ADMIN_PATH[0] : MANAGER_PATH[0], {
+      replace: true,
+    });
+  }, [state.isAuthenticated, state.role, currentPath]);
 
   if (state.loading || !state.isAuthenticated) return <LinearProgress />;
   return (
